@@ -2,7 +2,7 @@ require 'byebug'
 
 class Graph
 
-  attr_accessor :nodes, :edges
+  attr_accessor :name, :nodes, :edges
 
   def initialize name
     @name = name
@@ -11,25 +11,28 @@ class Graph
   end
 
   def build_node name
-    @nodes << Node.new(name)
+    nodes << Node.new(name)
   end
 
   def find_node node
     if node.is_a? Node
-      @nodes.find { |n| n==node } || raise("Node: #{node} not found")
+      nodes.find { |n| n==node } || raise("Node: #{node} not found")
     else
-      @nodes.find { |n| n.name==node } || raise("Node: #{name} not found")
+      nodes.find { |n| n.name==node } || raise("Node: #{name} not found")
     end
   end
 
-  def build_edge node_1, node_2
-    node_1 = find_node node_1
-    node_2 = find_node node_2
+  def build_edge n1, n2
+    node_1 = find_node n1
+    node_2 = find_node n2
 
     edge = edge_class.new node_1, node_2
     @edges << edge
     node_1.add_edge edge
     node_2.add_edge edge
+  end
+
+  def explore
   end
 
   def edge_class
@@ -38,42 +41,50 @@ class Graph
 end
 
 class Node
-  attr_accessor :name, :edges
+  attr_accessor :name, :edges, :explored
 
   def initialize(name)
     @name = name
     @edges = []
+    @explored = false
   end
 
   def add_edge(edge)
-    @edges << edge
+    edges << edge
   end
 
   def edge_to(neighbor)
-    @edges.detect { |edge| edge.destination(self) == neighbor }
+    edges.find { |edge| edge.destination(self) == neighbor }
   end
 
   def incoming_edges
-    @edges.select do |edge|
+    edges.select do |edge|
       edge.end == self
     end
   end
 
   def outgoing_edges
-    @edges.select do |edge|
+    edges.select do |edge|
       edge.start == self
     end
+  end
+
+  def explored?
+    explored
   end
 end
 
 class Edge
+
+  attr_accessor :nodes
+
   def initialize(node_1, node_2)
     @nodes = [node_1, node_2]
   end
 
   def destination(start_node)
     return nil unless @nodes.include?(start_node)
-    (@nodes - [start_node]).first
+    (nodes - [start_node]).first
   end
 end
 
@@ -81,8 +92,8 @@ class DirectedEdge < Edge
   attr_accessor :start, :end
   def initialize(node_1, node_2)
     super
-    @start = node_1
-    @end = node_2
+    self.start = node_1
+    self.end = node_2
   end
 
 end
@@ -109,20 +120,8 @@ class DirectedAcyclicGraph < Graph
     end
   end
 
-# while Q is non-empty do
-#     remove a node n from Q
-#     insert n into L
-#     for each node m with an edge e from n to m do
-#         remove edge e from the graph
-#         if m has no other incoming edges then
-#             insert m into Q
-# if graph has edges then
-#     output error message (graph has a cycle)
-# else
-#     output message (proposed topologically sorted order: L)
-
   def head_nodes
-    @nodes.select do |node|
+    nodes.select do |node|
       node.edges.find do |edge|
         edge.end == node
       end.nil?
@@ -193,4 +192,8 @@ class TestGraph < Test::Unit::TestCase
     assert !@g.valid?
   end
 
+  def test_explore
+    @g.explore
+    assert @g.nodes.all? { |n| n.explored? }
+  end
 end
